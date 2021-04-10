@@ -4,5 +4,11 @@ demo_baseq3/models/*
 demo_baseq3/scripts/*
 demo_baseq3/maps/*
 demo_baseq3/music/*
+demo_baseq3/sprites/*
+demo_baseq4/textures/*
+demo_baseq4/models/*
+demo_baseq4/scripts/*
+demo_baseq4/maps/*
+demo_baseq4/music/*
 node_modules
 

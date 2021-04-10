@@ -28,7 +28,7 @@
 // The bits that need to change to load different maps are right here!
 // ===========================================
 
-var mapName = 'q3tourney2';
+var mapName = 'oasis';
 
 // If you're running from your own copy of Quake 3, you'll want to use these shaders
 /*var mapShaders = [
@@ -44,7 +44,154 @@ var mapName = 'q3tourney2';
 ];*/
 
 // For my demo, I compiled only the shaders the map used into a single file for performance reasons
-var mapShaders = ['scripts/web_demo.shader'];
+//var mapShaders = ['scripts/web_demo.shader'];
+
+var etshaders = [
+'scripts/_unsorted.shader',
+'scripts/alpha.shader',
+'scripts/alpha_sd.shader',
+'scripts/assault.shader',
+'scripts/assault_rock.shader',
+'scripts/awf_props.shader',
+'scripts/battery.shader',
+'scripts/battery_wall.shader',
+'scripts/bbmodels_mapobjects.shader',
+'scripts/blimp.shader',
+'scripts/bunker_sd.shader',
+'scripts/castle_door.shader',
+'scripts/castle_floor.shader',
+'scripts/castle_window.shader',
+'scripts/castle_wood.shader',
+'scripts/common.shader',
+'scripts/decals.shader',
+'scripts/doors.shader',
+'scripts/eerie.shader',
+'scripts/egypt_door_sd.shader',
+'scripts/egypt_floor_sd.shader',
+'scripts/egypt_props_sd.shader',
+'scripts/egypt_rock_sd.shader',
+'scripts/egypt_trim_sd.shader',
+'scripts/egypt_walls_sd.shader',
+'scripts/egypt_windows_sd.shader',
+'scripts/egypt_wood_sd.shader',
+'scripts/factory_sd.shader',
+'scripts/fueldump.shader',
+'scripts/gfx_2d.shader',
+'scripts/gfx_clipboard.shader',
+'scripts/gfx_damage.shader',
+'scripts/gfx_hud.shader',
+'scripts/gfx_limbo.shader',
+'scripts/gfx_misc.shader',
+'scripts/goldrush.shader',
+'scripts/chat.shader',
+'scripts/chat_window.shader',
+'scripts/chat_wood.shader',
+'scripts/chateau.shader',
+'scripts/icons.shader',
+'scripts/levelshots.shader',
+'scripts/lights.shader',
+'scripts/liquids.shader',
+'scripts/liquids_sd.shader',
+'scripts/mapfx.shader',
+'scripts/metal_misc.shader',
+'scripts/metals_sd.shader',
+'scripts/miltary_door.shader',
+'scripts/miltary_trim.shader',
+'scripts/miltary_wall.shader',
+'scripts/models_ammo.shader',
+'scripts/models_foliage.shader',
+'scripts/models_furniture.shader',
+'scripts/models_mapobjects.shader',
+'scripts/models_multiplayer.shader',
+'scripts/models_players.shader',
+'scripts/models_shards.shader',
+'scripts/models_weapons2.shader',
+'scripts/mp_goldrush.shader',
+'scripts/mp_guns.shader',
+'scripts/mp_railgun.shader',
+'scripts/mp_rocket.shader',
+'scripts/mp_seawall.shader',
+'scripts/mp_siwa.shader',
+'scripts/mp_wurzburg.shader',
+'scripts/props.shader',
+'scripts/props_sd.shader',
+'scripts/radar.shader',
+'scripts/railgun_props.shader',
+'scripts/railway_sd.shader',
+'scripts/rock.shader',
+'scripts/rubble.shader',
+'scripts/seawall_wall.shader',
+'scripts/sfx.shader',
+'scripts/shadows.shader',
+'scripts/siwa_fx_sd.shader',
+'scripts/siwa_props_sd.shader',
+'scripts/siwa_skyboxes_sd.shader',
+'scripts/skies.shader',
+'scripts/skies_sd.shader',
+'scripts/snow.shader',
+'scripts/snow_sd.shader',
+'scripts/sprites.shader',
+'scripts/stone.shader',
+'scripts/supply.shader',
+'scripts/supply_levelshots.shader',
+'scripts/swf.shader',
+'scripts/temperate_sd.shader',
+'scripts/terrain.shader',
+'scripts/textures.shader',
+'scripts/tobruk_wall_sd.shader',
+'scripts/tobruk_windows_sd.shader',
+'scripts/town_props.shader',
+'scripts/town_roof.shader',
+'scripts/town_wall.shader',
+'scripts/town_window.shader',
+'scripts/town_wood.shader',
+'scripts/tree.shader',
+'scripts/ui_assets.shader',
+'scripts/ui_assets2.shader',
+'scripts/villa_sd.shader',
+'scripts/village.shader',
+'scripts/wood.shader',
+'scripts/xlab_door.shader',
+'scripts/xlab_props.shader',
+'scripts/xlab_wall.shader'
+
+];
+
+q3shaders= [
+'scripts/test.shader',
+'scripts/sky.shader',
+'scripts/skin.shader',
+'scripts/shrine.shader',
+'scripts/sfx.shader',
+'scripts/organics.shader',
+'scripts/models.shader',
+'scripts/mkoxide.shader',
+'scripts/menu.shader',
+'scripts/liquid.shader',
+'scripts/hell.shader',
+'scripts/gothic_wall.shader',
+'scripts/gothic_trim.shader',
+'scripts/gothic_light.shader',
+'scripts/gothic_floor.shader',
+'scripts/gothic_block.shader',
+'scripts/gfx.shader',
+'scripts/eerie.shader',
+'scripts/devilpunch.shader',
+'scripts/ctf.shader',
+'scripts/cpm22.shader',
+'scripts/common.shader',
+'scripts/base_wall.shader',
+'scripts/base_trim.shader',
+'scripts/base_support.shader',
+'scripts/base_object.shader',
+'scripts/base_light.shader',
+'scripts/base_floor.shader',
+'scripts/base_button.shader',
+'scripts/base.shader'
+];
+
+//var mapShaders = q3shaders;
+var mapShaders = etshaders;
 
 // ===========================================
 // Everything below here is common to all maps
@@ -136,6 +283,10 @@ function initMapEntities(entities) {
     respawnPlayer(0);
 }
 
+function getRandomInt(min, max) {
+  return Math.floor(Math.random() * (max - min)) + min;
+}
+
 function initPlayerMover(bsp) {
     playerMover = new q3movement(bsp);
     respawnPlayer(0);
@@ -147,12 +298,14 @@ var lastIndex = 0;
 // "Respawns" the player at a specific spawn point. Passing -1 will move the player to the next spawn point.
 function respawnPlayer(index) {
     if(map.entities && playerMover) {
-        if(index == -1) {
+        /*if(index == -1) {
             index = (lastIndex+1)% map.entities.info_player_deathmatch.length;
         }
-        lastIndex = index;
+        lastIndex = index;*/
 
-        var spawnPoint = map.entities.info_player_deathmatch[index];
+        //var spawnPoint = map.entities.info_player_deathmatch[index];
+        var spawnPoint = map.entities.team_CTF_bluespawn[getRandomInt(0,63)];
+
         playerMover.position = [
             spawnPoint.origin[0],
             spawnPoint.origin[1],
@@ -161,8 +314,8 @@ function respawnPlayer(index) {
 
         playerMover.velocity = [0,0,0];
 
-        zAngle = -(spawnPoint.angle || 0) * (3.1415/180) + (3.1415*0.5); // Negative angle in radians + 90 degrees
-        xAngle = 0;
+        xAngle = -(spawnPoint.angle || 0) * (3.1415/180) + (3.1415*0.5); // Negative angle in radians + 90 degrees
+        zAngle = 0;
     }
 }
 

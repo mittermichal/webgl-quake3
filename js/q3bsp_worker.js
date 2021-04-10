@@ -29,6 +29,8 @@
 importScripts('./util/binary-file.js');
 importScripts('./util/gl-matrix-min.2.3.2.js');
 
+var mapName = 'oasis';
+
 onmessage = function(msg) {
     switch(msg.data.type) {
         case 'load':
@@ -84,21 +86,22 @@ q3bsp.parse = function(src, tesselationLevel) {
     var header = q3bsp.readHeader(src);
     
     // Check for appropriate format
-    if(header.tag != 'IBSP' || header.version != 46) {
+    /*if(header.tag != 'IBSP' || header.version != 46) {
         postMessage({
             type: 'status',
             message: 'Incompatible BSP version.'
         });
 
         return;
-    }
+    }*/
     
     // Read map entities
     q3bsp.readEntities(header.lumps[0], src);
     
     // Load visual map components
     shaders = q3bsp.readShaders(header.lumps[1], src);
-    var lightmaps = q3bsp.readLightmaps(header.lumps[14], src);
+    //var lightmaps = q3bsp.readLightmaps(header.lumps[14], src);
+    var lightmaps = q3bsp.readETLightmaps(mapName);
     var verts = q3bsp.readVerts(header.lumps[10], src);
     var meshVerts = q3bsp.readMeshVerts(header.lumps[11], src);
     faces = q3bsp.readFaces(header.lumps[13], src);
@@ -271,11 +274,96 @@ q3bsp.brightnessAdjustVertex = function(color, factor) {
     return color;
 };
 
+
+//http://stackoverflow.com/a/2998822
+function pad(num, size) {
+    var s = num+"";
+    while (s.length < size) s = "0" + s;
+    return s;
+}
+
+
+q3bsp.readETLightmaps = function(mapName) {
+    var count=8;
+    var LMSIZE=256;
+
+    var lightmapSize = LMSIZE * LMSIZE;
+    //var count = lump.length / (lightmapSize*3);
+    var gridSize = 2;
+    
+    while(gridSize * gridSize < count) {
+        gridSize *= 2;
+    }
+    
+    var textureSize = gridSize * LMSIZE; //128??
+    
+    var xOffset = 0;
+    var yOffset = 0;
+    
+    var lightmaps = [];
+    var lightmapRects = [];
+    var rgb = [ 0, 0, 0 ];
+
+    for(var i = 0; i < count; ++i) {
+        var elements = new Array(lightmapSize*4);
+        
+        var request = new XMLHttpRequest();
+        request.open('GET', '../demo_baseq3/maps/' + mapName + '/' + 'lm_' + pad(i,4) + '.tga', false);  // `false` makes the request synchronous
+        request.send(null);
+
+        if (request.status === 200) {
+          console.log("OK");
+        }
+        src = new BinaryFile(request.responseText);
+        src.seek(17); //TGA header size
+
+        for(var j = 0; j < lightmapSize*4; j+=4) {
+            rgb[0] = 255;//src.readUByte();
+            rgb[1] = 255;//src.readUByte();
+            rgb[2] = 255;//src.readUByte();
+            //console.log(rgb);
+            //q3bsp.brightnessAdjust(rgb, 4.0);
+            //return;
+            elements[j] = rgb[0];
+            elements[j+1] = rgb[1];
+            elements[j+2] = rgb[2];
+            elements[j+3] = 255;
+        }
+        
+        lightmaps.push({
+            x: xOffset, y: yOffset,
+            width: LMSIZE, height: LMSIZE,
+            bytes: elements
+        });
+        
+        lightmapRects.push({
+            x: xOffset/textureSize,
+            y: yOffset/textureSize,
+            xScale: LMSIZE/textureSize,
+            yScale: LMSIZE/textureSize
+        });
+        
+        xOffset += LMSIZE;
+        if(xOffset >= textureSize) {
+            yOffset += LMSIZE;
+            xOffset = 0;
+        }
+    }
+
+    postMessage({
+        type: 'lightmap',
+        size: textureSize,
+        lightmaps: lightmaps
+    });
+    
+    return lightmapRects;
+
+}
+
 // Read all lightmaps
 q3bsp.readLightmaps = function(lump, src) {
     var lightmapSize = 128 * 128;
     var count = lump.length / (lightmapSize*3);
-    
     var gridSize = 2;
     
     while(gridSize * gridSize < count) {
@@ -300,6 +388,15 @@ q3bsp.readLightmaps = function(lump, src) {
             rgb[1] = src.readUByte();
             rgb[2] = src.readUByte();
             
+            request = new XMLHttpRequest();
+            request.addEventListener("load", function () {
+                q3bsp.parse(new BinaryFile(request.responseText), tesselationLevel);
+            }, false);
+            
+            request.open('GET', url, true);
+            request.overrideMimeType('text/plain; charset=x-user-defined');
+            request.setRequestHeader('Content-Type', 'text/plain');
+            request.send(null);
             q3bsp.brightnessAdjust(rgb, 4.0);
             
             elements[j] = rgb[0];
@@ -327,7 +424,32 @@ q3bsp.readLightmaps = function(lump, src) {
             xOffset = 0;
         }
     }
-    
+    /*
+    if (count==0) {
+
+        var elements = new Array(lightmapSize*4);
+        
+        for(var j = 0; j < lightmapSize*4; j+=4) {
+            elements[j] = 255;
+            elements[j+1] = 255;
+            elements[j+2] = 255;
+            elements[j+3] = 255;
+        }
+
+        lightmaps.push({
+        x: 0, y: 0,
+        width: 128, height: 128,
+        bytes: elements
+        });
+        
+        lightmapRects.push({
+            x: xOffset/textureSize,
+            y: yOffset/textureSize,
+            xScale: 128/textureSize,
+            yScale: 128/textureSize
+        });
+    }
+    */
     // Send the lightmap data back to the render thread
     postMessage({
         type: 'lightmap',
@@ -388,13 +510,15 @@ q3bsp.readFaces = function(lump, src) {
             lmStart: [ src.readLong(), src.readLong() ],
             lmSize: [ src.readLong(), src.readLong() ],
             lmOrigin: [ src.readFloat(), src.readFloat(), src.readFloat() ],
-            lmVecs: [[ src.readFloat(), src.readFloat(), src.readFloat() ],
-                    [ src.readFloat(), src.readFloat(), src.readFloat() ]],
-            normal: [ src.readFloat(), src.readFloat(), src.readFloat() ],
+            lmVecs: [
+                        [ src.readFloat(), src.readFloat(), src.readFloat() ],
+                        [ src.readFloat(), src.readFloat(), src.readFloat() ]/*,
+                        [ src.readFloat(), src.readFloat(), src.readFloat() ]*/
+                    ],
+            normal: [ src.readFloat(), src.readFloat(), src.readFloat()],
             size: [ src.readLong(), src.readLong() ],
             indexOffset: -1
         };
-        
         faces.push(face);
     }
 
